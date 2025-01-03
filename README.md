@@ -215,36 +215,84 @@ Now the harness should be able to run Cybench.
 ## Example Evaluations
 
 1. **Running SWE-bench locally:**
-```bash
-hal-eval --benchmark swebench_verified_mini \
-  --agent_dir agents/swebench_example_agent/ \
-  --agent_function main.run \
-  --agent_name "My Agent (gpt-4o-mini)" \
-  -A model_name=gpt-4o-mini \
-  --max_concurrent 5
-```
+    ```bash
+    hal-eval --benchmark swebench_verified_mini \
+      --agent_dir agents/swebench_example_agent/ \
+      --agent_function main.run \
+      --agent_name "My Agent (gpt-4o-mini)" \
+      -A model_name=gpt-4o-mini \
+      --max_concurrent 5
+    ```
 
-2. **Running USACO on Azure VM:**
-```bash
-hal-eval --benchmark usaco \
-  --agent_dir agents/usaco_example_agent/ \
-  --agent_function main.run \
-  --agent_name "USACO Solver (gpt-4o)" \
-  --vm \
-  --max_concurrent 5 \
-  -A model_name=gpt-4o
-```
+1. **Running USACO on Amazon EC2 using models available via Amazon Bedrock**
 
-3. **Running Inspect AI benchmark:**
-```bash
-hal-eval --benchmark inspect_evals/gaia \
-  --agent_dir agents/inspect/ \
-  --agent_function gaia.default_agent \
-  --agent_name "Gaia Agent (gpt-4o)" \
-  -A model_name=gpt-4o \
-  -I token_limit=4000 \
-  -I temperature=0.4
-```
+    - Create an Amazon EC2 VM with `t3.2xlarge` instance type and the latest Ubuntu AMI (see [this](https://aws-samples.github.io/foundation-model-benchmarking-tool/misc/ec2_instance_creation_steps.html) for general guidance on creating EC2 VMs).
+    - Make sure that the IAM role associated with the VM has `AmazonBedrockFullAccess` permissions.
+    - Follow steps in the [Setup](#setup) section.
+        - Install `Docker` on this VM. 
+            ```{.bashrc}
+            sudo apt-get update
+            sudo apt-get install --reinstall docker.io -y
+            sudo apt-get install -y docker-compose
+            docker compose version
+            ```
+    - Copy the test data `usaco_v3` dataset in the `hal/benchmarks/USACO/data/datasets/usaco_v3` folder. The dataset runs into several GBs and is available for direct download as a Zip archive [here](https://drive.google.com/file/d/1z5ODOJMqyer1QxzYtEUZ2hbAx-7nU8Vi/view?usp=share_link). You can download the dataset Zip archive and then find the `usaco_v3` folder in the extracted contents (also see the official [`USACO README`](https://github.com/princeton-nlp/USACO/blob/main/README.md#data)).
+    - Ensure that you have access to the models in Amazon Bedrock that you want to use. See [`instructions`](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access-modify.html) for requesting model access in Amazon Bedrock.
+    - Run the following command to run the benchmarking. The command shown below runs the USACO benchmark for the `Anthropic Claude 3.5 Sonnet` model. _Depending upon your service quota limits this may take anywhere from 30 minutes to several hours_.
+
+      ```{.bashrc}
+      BENCHMARK_NAME=usaco
+      AGENT_DIR=agents/usaco_bedrock_agents/
+      AGENT_FUNCTION=main.run
+      MODEL_NAME=bedrock/us.anthropic.claude-3-5-sonnet-20241022-v2:0
+      AGENT_NAME="USACO_${MODEL_NAME}"
+      PWD=`pwd`
+      PROMPT_TEMPLATE_PATH=${PWD}/${AGENT_DIR}/prompt_templates/claude.txt
+      # adjust the concurrency based on your service quota, higher concurrency could lead to rate limiting
+      CONCURRENCY=10
+      hal-eval --benchmark $BENCHMARK_NAME\
+          --agent_dir $AGENT_DIR\
+          --agent_function $AGENT_FUNCTION \
+          --agent_name $AGENT_NAME \
+          -A model_name=$MODEL_NAME \
+          -A prompt_template_path=$PROMPT_TEMPLATE_PATH \
+          --max_concurrent $CONCURRENCY
+      ```
+    Use the model ids listed in the table below for the `MODEL_NAME` variable to try out other foundation models available via Amazon Bedrock.
+    | Model Name                  | Model ID                                             |Model ID                                             |
+    |-----------------------------|-----------------------------------------------------|-----------------------------------------------------|
+    | Anthropic Claude 3.5 Haiku  | bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0  | `claude.txt` |
+    | Anthropic Claude 3.5 Sonnet | bedrock/us.anthropic.claude-3-5-sonnet-20241022-v2:0 |`claude.txt` |
+    | Anthropic Claude 3 Sonnet   | bedrock/us.anthropic.claude-3-sonnet-20240229-v1:0   |`claude.txt` |
+    | Amazon Nova Pro             | bedrock/amazon.nova-pro-v1:0                         |`nova.txt` |
+    | Amazon Nova Lite            | bedrock/amazon.nova-lite-v1:0                        |`nova.txt` |
+    | Amazon Nova Micro           | bedrock/amazon.nova-micro-v1:0                       |`nova.txt` |
+    | Meta Llama-3.3 70B          | bedrock/us.meta.llama3-3-70b-instruct-v1:0           |`claude.txt` |
+
+
+1. **Running USACO on Azure VM:**
+
+    ```bash
+    hal-eval --benchmark usaco \
+      --agent_dir agents/usaco_example_agent/ \
+      --agent_function main.run \
+      --agent_name "USACO Solver (gpt-4o)" \
+      --vm \
+      --max_concurrent 5 \
+      -A model_name=gpt-4o
+    ```
+
+1. **Running Inspect AI benchmark:**
+
+    ```bash
+    hal-eval --benchmark inspect_evals/gaia \
+      --agent_dir agents/inspect/ \
+      --agent_function gaia.default_agent \
+      --agent_name "Gaia Agent (gpt-4o)" \
+      -A model_name=gpt-4o \
+      -I token_limit=4000 \
+      -I temperature=0.4
+    ```
 
 ## Running Environment Options
 
